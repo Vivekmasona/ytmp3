@@ -31,7 +31,7 @@ app.get("/hack", async (req, res) => {
   // const format = ytdl.chooseFormat(info.formats, { quality: "249" });
   formats = formats.filter((format) => format.hasAudio === true);
 
-  res.send({ title, thumbnail, videoFormats, formats });
+  res.send({ title, thumbnail, audioFormats, formats });
 });
 
 app.get("/videodl", async (req, res) => {
@@ -196,4 +196,3 @@ app.get("/video", async (req, res) => {
 app.listen(port, () => {
   console.log("Running ...");
 });
-
