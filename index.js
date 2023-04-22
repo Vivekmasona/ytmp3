@@ -143,7 +143,7 @@ app.get("/audiodl", async (req, res) => {
     ytdl(url, {
             format: 'mp3',
             filter: 'audioonly',
-            quality: '140'
+            quality: 'mp3'
         }).pipe(res);
 
     } catch (err) {
