@@ -18,7 +18,7 @@ app.get('/download', (req, res) => {
 ytdl(url, {
             format: 'mp3',
             filter: 'audioonly',
-            quality: 'highest'
+            quality: 'Hi-res'
         }).pipe(res);
 
    //  } catch (err) {
