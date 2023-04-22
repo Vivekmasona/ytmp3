@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const ytdl = require("ytdl-core");
 const app = express();
-// const fs = require("fs");
+const fs = require("fs");
 
 const corsOptions = {
   origin: "https://vivekfy.netlify.app", // change this origin as your like
