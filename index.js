@@ -1,198 +1,62 @@
-const express = require("express");
-const cors = require("cors");
-const ytdl = require("ytdl-core");
+require("./config.js").load();
+const fs = require("fs")
+const path = require("path")
+const express = require("express")
+const bodyParser = require("body-parser")
+const chalk = require("chalk")
+const cors = require("cors")
+const session = require("express-session")
+console.clear()
+const jwt = require('jsonwebtoken')
+const Authorise = require("./authorise")
 const app = express();
-// const fs = require("fs");
+const mongoose = require("mongoose")
 
-const corsOptions = {
-  origin: "https://vivekfy.netlify.app", // change this origin as your like
-  // origin: "http://localhost:3000",
-  credentials: true, //access-control-allow-credentials:true
-  optionSuccessStatus: 200,
-};
+mongoose.connect(`mongodb+srv://adarsh:adarsh@cluster0-swlw4.mongodb.net/notspotify?retryWrites=true&w=majority`,{useUnifiedTopology:true, useNewUrlParser:true})
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function() {
+ console.log(chalk.green("[mongoose] connected to atlas server"));
+});
+
+var whitelist = ['http://localhost:3000', 'http://localhost:4829']
+var corsOptions = {
+  origin: function (origin, callback) {
+
+      callback(null, true)
+
+  },credentials: true
+}
 app.use(cors(corsOptions));
 
-app.use(express.static("./static"));
-const port = process.env.PORT || 5000;
+app.use(bodyParser.urlencoded({extended:true}))
+app.use(bodyParser.json())
+app.use(bodyParser.text());
 
-app.get("/", (res) => {
-  res.render("index.html");
-});
+app.get("/", (req, res) => {
+    res.send("hii")
+})
 
-app.get("/hack", async (req, res) => {
-  const url = req.query.url;
-  console.log(url);
-  const info = await ytdl.getInfo(url);
-  const title = info.videoDetails.title;
-  const thumbnail = info.videoDetails.thumbnails[0].url;
-  let formats = info.formats;
 
-  const audioFormats = ytdl.filterFormats(info.formats, "audioonly");
-  // const format = ytdl.chooseFormat(info.formats, { quality: "249" });
-  formats = formats.filter((format) => format.hasAudio === true);
+app.get("/host", (req, res) => {
+    res.send(req.headers.host)
+})
 
-  res.send({ title, thumbnail, audioFormats, formats });
-});
 
-app.get("/videodl", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
 
-  const info = await ytdl.getInfo(url);
-  const title = info.videoDetails.title;
+fs.readdir(path.join(__dirname, process.env.routes_dir || "routes"), async function (err, routers) {
+    if (err) throw Error(err.message);
+    for (let r in routers) {
 
-  res.header("Content-Disposition", `attachment;  filename="${title}_vivekmasona"`);
-  try {
-    ytdl(url, { itag }).pipe(res);
-  } catch (err) {
-    console.log(err);
-  }
-});
-app.get("/mp3", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
+        let route = await require(path.join(__dirname, process.env.routes_dir || "routes", routers[r]))
+        const { root, hook, isProtected = true } = route;
 
-  // const info = await ytdl.getInfo(url);
-  // const title = info.videoDetails.title;
+        app.use(...[root, (isProtected === false ? (req, res, next) => next() : Authorise), hook({ hi: "hi" })]);
+        console.log("Attached route " + chalk.yellow("%s") + (isProtected === false ? chalk.red(" [no-auth]") : chalk.green(" [auth]")), root);
 
-  // res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
-  try {
-    ytdl(url, {
-            format: 'mp3',
-            filter: 'audioonly',
-            quality: 'highest'
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
     }
-});
-app.get("/audio", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
-
-  // const info = await ytdl.getInfo(url);
-  // const title = info.videoDetails.title;
-
-  // res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
-  try {
-    ytdl(url, {
-            format: 'mp3',
-            filter: 'audioonly',
-            quality: 'highest'
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
-    }
-});
-app.get("/music", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
-
-  // const info = await ytdl.getInfo(url);
-  // const title = info.videoDetails.title;
-
-  // res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
-  try {
-    ytdl(url, {
-            format: 'mp3',
-            filter: 'audioonly',
-            quality: 'highest'
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
-    }
-});
-app.get("/low-audio", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
-
-  // const info = await ytdl.getInfo(url);
-  // const title = info.videoDetails.title;
-
-  // res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
-  try {
-    ytdl(url, {
-            format: 'mp3',
-            filter: 'audioonly',
-            quality: 'lowest'
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-app.get("/audiodl", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
-
-  const info = await ytdl.getInfo(url);
-  const title = info.videoDetails.title;
-
-  res.header("Content-Disposition", `attachment;  filename="${title}_vivekmasona"`);
-  try {
-    ytdl(url, {
-            // format: 'worstaudio',
-            filter: 'mp3only',
-            // quality: ''
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-app.get("/low-audiodl", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
-
-  // const info = await ytdl.getInfo(url);
-  // const title = info.videoDetails.title;
-
-  res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
-  try {
-    ytdl(url, {
-            format: 'mp3',
-            filter: 'audioonly',
-            quality: 'lowest'
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
-    }
-});
 
 
-app.get("/video", async (req, res) => {
-  const url = req.query.url;
-  const itag = req.query.itag;
-  const type = req.query.type;
+    app.listen(process.env.PORT || 4829, () => console.log(`Server listening on port ${process.env.PORT || 4829}`));
 
-  const info = await ytdl.getInfo(url);
-  const title = info.videoDetails.title;
-
-  // res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
-  try {
-    ytdl(url, { itag }).pipe(res);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-// app.get('*', (req, res) => {
-//   res.render('error')
-// })
-
-app.listen(port, () => {
-  console.log("Running ...");
-});
+})
