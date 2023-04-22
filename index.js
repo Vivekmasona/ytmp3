@@ -4,7 +4,7 @@ const ytdl = require('ytdl-core');
 const app = express();
 app.use('/static', express.static('./static'));
 
-app.listen(3000, () => {
+app.listen(8000, () => {
     console.log("It Works!");
 });
 
@@ -16,8 +16,8 @@ app.get('/download', (req, res) => {
     var url = req.query.url;
     res.header("Content-Disposition", 'attachment; filename="audio.mp3');
     ytdl(url, {
-            format: 'mp3',
+            // format: 'mp3',
             filter: 'audioonly',
-            quality: 'highest'
+            // quality: 'highest'
         }).pipe(res);
 });
