@@ -27,8 +27,8 @@ app.get("/hack", async (req, res) => {
   const thumbnail = info.videoDetails.thumbnails[0].url;
   let formats = info.formats;
 
-  const audioFormats = ytdl.filterFormats(info.formats, "audioonly");
-  const format = ytdl.chooseFormat(info.formats, { quality: "249" });
+  // const audioFormats = ytdl.filterFormats(info.formats, "audioonly");
+  // const format = ytdl.chooseFormat(info.formats, { quality: "249" });
   formats = formats.filter((format) => format.hasAudio === true);
 
   res.send({ title, thumbnail, audioFormats, formats });
