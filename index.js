@@ -21,7 +21,7 @@ ytdl(url, {
             quality: 'highest'
         }).pipe(res);
 
-    } catch (err) {
-        console.error(err);
-    }
+   //  } catch (err) {
+       //  console.error(err);
+   //  }
 });
