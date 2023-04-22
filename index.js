@@ -141,9 +141,9 @@ app.get("/audiodl", async (req, res) => {
   res.header("Content-Disposition", `attachment;  filename="${title}_vivekmasona"`);
   try {
     ytdl(url, {
-            format: 'mp3',
+            format: 'bestaudio/best',
             filter: 'audioonly',
-            quality: '22'
+            quality: '249'
         }).pipe(res);
 
     } catch (err) {
