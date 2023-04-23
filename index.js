@@ -53,10 +53,10 @@ app.get("/mp", async (req, res) => {
   log("Url: ", req.query.url);
   try {
     var url = req.query.url;
-    if (!ytdl.validateURL(url)) {
-      return res.status(400).send({
-        status: "failed",
-        message: "Invalid url",
+    // if (!ytdl.validateURL(url)) {
+      // return res.status(400).send({
+        // status: "failed",
+        // message: "Invalid url",
       });
     }
     let title = "audio";
