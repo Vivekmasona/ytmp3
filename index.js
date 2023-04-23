@@ -148,11 +148,7 @@ app.get("/audiodl", async (req, res) => {
     }).pipe(res);
   } catch (err) {
     console.error(err);
-    res.status(500).send({
-      status: "failed",
-      message: "An error occured while processing this request.",
-   
-  
+    }
 });
 app.get("/low-audiodl", async (req, res) => {
   const url = req.query.url;
