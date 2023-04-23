@@ -60,12 +60,12 @@ app.get("/mp3", async (req, res) => {
   // const info = await ytdl.getInfo(url);
   // const title = info.videoDetails.title;
 
-  // res.header("Content-Disposition", `attachment;  filename="Download from.vivekmasona"`);
+  // res.header("Content-Disposition", `attachment;  filename="vfy_${title}"`);
   try {
     ytdl(url, {
-            format: 'mp3',
+            format: '128',
             filter: 'audioonly',
-            quality: 'highest'
+            quality: 'highestaudio'
         }).pipe(res);
 
     } catch (err) {
