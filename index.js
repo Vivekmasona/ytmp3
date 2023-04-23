@@ -57,8 +57,8 @@ app.get("/mp", async (req, res) => {
       // return res.status(400).send({
         // status: "failed",
         // message: "Invalid url",
-      });
-    }
+      // });
+   //  }
     let title = "audio";
 
     await ytdl.getBasicInfo(
