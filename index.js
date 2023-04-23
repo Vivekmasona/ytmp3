@@ -49,45 +49,9 @@ app.get("/videodl", async (req, res) => {
     console.log(err);
   }
 });
-app.get("/mp", async (req, res) => {
-  log("Url: ", req.query.url);
-  try {
-    var url = req.query.url;
-    // if (!ytdl.validateURL(url)) {
-      // return res.status(400).send({
-        // status: "failed",
-        // message: "Invalid url",
-      // });
-   //  }
-    let title = "audio";
 
-    await ytdl.getBasicInfo(
-      url,
-      {
-        format: "mp4",
-      },
-      (err, info) => {
-        if (err) throw err;
-        title = info.player_response.videoDetails.title.replace(
-          /[^\x00-\x7F]/g,
-          ""
-        );
-      }
-    );
 
-    res.header("Content-Disposition", `attachment; filename="${title}.mp3"`);
-    ytdl(url, {
-      format: "mp3",
-      filter: "audioonly",
-    }).pipe(res);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({
-      status: "failed",
-      message: "An error occured while processing this request.",
-    });
-  }
-});
+    
 app.get("/mp3", async (req, res) => {
   const url = req.query.url;
   const itag = req.query.itag;
@@ -177,19 +141,19 @@ app.get("/audiodl", async (req, res) => {
   const info = await ytdl.getInfo(url);
   const title = info.videoDetails.title;
 
-  res.header("Content-Disposition", `attachment;  filename="${title}_vivekmasona"`);
-  try {
+  res.header("Content-Disposition", `attachment; filename="${title}.mp3"`);
     ytdl(url, {
-            format: 'mp3',
-            filter: 'audioonly',
-            quality: 'highest'
-        }).pipe(res);
-
-    } catch (err) {
-        console.error(err);
-    }
+      format: "mp3",
+      filter: "audioonly",
+    }).pipe(res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      status: "failed",
+      message: "An error occured while processing this request.",
+    });
+  }
 });
-
 app.get("/low-audiodl", async (req, res) => {
   const url = req.query.url;
   const itag = req.query.itag;
