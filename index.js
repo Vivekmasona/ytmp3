@@ -49,7 +49,7 @@ app.get("/videodl", async (req, res) => {
     console.log(err);
   }
 });
-app.get("/mp", async (req, res, next) => {
+app.get("/mp", async (req, res) => {
   log("Url: ", req.query.url);
   try {
     var url = req.query.url;
