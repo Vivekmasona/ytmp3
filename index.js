@@ -1,49 +1,57 @@
-const morgan = require('morgan');
 const express = require('express');
-const cors = require('cors');
-const app = express();
-const Download = require('./download');
+const path = require('path');
+const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const contentDisposition = require('content-disposition');
+const { promises: Fs } = require('fs')
 
-app.use(cors());
-app.options('*', cors()); // to restrict this to one website only, replace the * with your website url
-app.use(morgan('dev'));
+// const pythonConverter = require('../util/pythonConverter');
+const jsConverter = require('../util/jsConverter');
 
-app.get('/', (req, res, next) => {
-  res.send(
-    'route: /youtube-download?url=https://youtube.com/watch?v=VIDEOURL&quality=QUALITY&format=mp4/mp3'
-  );
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+    res.send({ ok: "ok" });
 });
 
-app.get('/youtube-download', async (req, res, next) => {
-  try {
-    const videoFormat = req.query.format;
-    const data = await Download(req.query.url, req.query.quality, videoFormat);
-    res.json({
-      status: res.statusCode,
-      result: data,
-    });
-  } catch (error) {
-    next(error);
-  }
+// route to send youtube link and download it on local server
+router.post('/convert', async (req, res) => {
+    try {
+        const link = req.body.link; 
+        if(!link) {
+            throw new Error('Link not provided!');
+        }
+        const response = await jsConverter(link);
+        res.send(response);
+    } catch (error) {
+        res.status(400).send({ error: error.message });
+    }
 });
 
-// Handle error 404
-app.use((req, res, next) => {
-  err = new Error('Not Found');
-  err.status = 404;
-  next(err);
+// route to download a specific file from the server
+router.post('/download', async (req, res) => {
+    try {
+        const token = req.body.token;
+        if(!token) {
+            throw new Error('Token not provided!');
+        }
+        const decoded = jwt.verify(token, process.env.AUTH_STRING);
+        
+        const CONVERTED_DIR = path.join(__dirname, '..', 'converted');
+        const file_path = path.join(CONVERTED_DIR, `${decoded._id}.mp3`);
+        const stat = fs.statSync(file_path);
+        res.writeHead(200, {
+            'Content-Disposition': contentDisposition(`${decoded._name}.mp3`),
+            'Content-Type': 'audio/mp3',
+            'Content-Length': stat.size,
+        });
+        const readStream = fs.createReadStream(file_path);
+        readStream.pipe(res);
+    } catch (error) {
+        res.status(400).send({ error: 'File not found on server', message: error.message });
+        console.log(error)
+        return;
+    }
 });
 
-// Send error message
-app.use((error, req, res, next) => {
-  res.status(error.status || 500);
-  res.send({
-    status: error.status || 500,
-    message: error.message,
-  });
-});
-
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`[SERVER] BERJALAN PADA PORT :${PORT}`);
-});
+module.exports = router;
