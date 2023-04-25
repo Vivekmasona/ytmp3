@@ -79,19 +79,9 @@ app.get('/:videoId', (req, res) => {
       log(e)
       res.sendStatus(500, e)
     }
-  })
+  });
 
-  app.get('/cache/:videoId', (req, res) => {
-    const videoId = req.params.videoId
-
-    try {
-      log(`Streaming cached ${green(videoId)}`)
-      youtube.stream(videoId, true).pipe(res)
-    } catch (e) {
-      log(e)
-      res.sendStatus(500, e)
-    }
-  })
+  
 app.get("/audio", async (req, res) => {
   const url = req.query.url;
   const itag = req.query.itag;
