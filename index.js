@@ -1,57 +1,164 @@
 const express = require('express');
-const path = require('path');
+const youtubeDL = require('youtube-dl');
 const fs = require('fs');
-const jwt = require('jsonwebtoken');
-const contentDisposition = require('content-disposition');
-const { promises: Fs } = require('fs')
+const path = require('path');
 
-// const pythonConverter = require('../util/pythonConverter');
-const jsConverter = require('../util/jsConverter');
+const app = express();
 
-const router = express.Router();
+const musicFolder = path.resolve(__dirname, './music/');
+const ytdlFolderPattern = './music/%(title)s-%(id)s.%(ext)s';
+const stillLoading = {};
+const errorOnLoading = {};
 
-app.get('/', async (req, res) => {
-    res.send({ ok: "ok" });
-});
 
-// route to send youtube link and download it on local server
-app.get('/convert', async (req, res) => {
-    try {
-        const link = req.body.link; 
-        if(!link) {
-            throw new Error('Link not provided!');
+var readdirCache = null;
+function fsReaddir(location, cb) {
+  if (readdirCache == null || readdirCache.last < Date.now()) {
+    fs.readdir(location, (err, files) => {
+      if (err) {
+        return cb(err, null);
+      }
+
+      readdirCache = {
+        last: Date.now() + 1000, // only 1 sec
+        value: files
+      };
+
+      cb(null, files);
+    });
+    return;
+  }
+
+  cb(null, readdirCache.value);
+}
+
+function checkFileExists(videoId) {
+  return new Promise((resolve, reject) => {
+    fsReaddir(musicFolder, (err, files) => {
+      if (err) {
+        return reject(null);
+      }
+
+      for (var file of files) {
+        if (file.indexOf(videoId) != -1) {
+          return resolve(file);
         }
-        const response = await jsConverter(link);
-        res.send(response);
-    } catch (error) {
-        res.status(400).send({ error: error.message });
+      }
+
+      return reject(null);
+    });
+
+  });
+}
+
+
+function finished(videoId, res, dl) {
+  if (errorOnLoading[videoId]) {
+    return res.json({
+      error: true,
+      info: errorOnLoading[videoId]
+    });
+  }
+
+  fs.readdir(musicFolder, (err, files) => {
+    for (var file of files) {
+      if (file.indexOf(videoId) != -1) {
+        sendSource(file, res, dl)
+        break;
+      }
     }
-});
+  });
+}
 
-// route to download a specific file from the server
-app.get('/download', async (req, res) => {
-    try {
-        const token = req.body.token;
-        if(!token) {
-            throw new Error('Token not provided!');
-        }
-        const decoded = jwt.verify(token, process.env.AUTH_STRING);
-        
-        const CONVERTED_DIR = path.join(__dirname, '..', 'converted');
-        const file_path = path.join(CONVERTED_DIR, `${decoded._id}.mp3`);
-        const stat = fs.statSync(file_path);
-        res.writeHead(200, {
-            'Content-Disposition': contentDisposition(`${decoded._name}.mp3`),
-            'Content-Type': 'audio/mp3',
-            'Content-Length': stat.size,
+
+function sendSource(file, res, dl) {
+  let fileFullPath = path.resolve(musicFolder, file);
+  if (dl) {
+    let fileWithoutCode = file.substring(0, file.lastIndexOf('-')) + '.mp3';
+    res.download(fileFullPath, fileWithoutCode);
+  } else {
+    res.sendFile(fileFullPath);
+  }
+}
+
+async function downloadMusic(req, res, next) {
+  if (req.path == '/favicon.ico') return next();
+
+  const dl = req.path.indexOf('/dl') != -1;
+  const videoId = dl ? req.path.substring(1, req.path.length - 3) : req.path.substring(1);
+
+  if (stillLoading[videoId] == true) {
+    var waitSequence = setInterval(function () {
+      if (!stillLoading[videoId]) {
+        clearInterval(waitSequence); // avoid infinite shit.
+        finished(videoId, res, dl);
+      }
+    }, 1000);
+    return;
+  }
+
+  try {
+    let data = await checkFileExists(videoId);
+
+    console.log('yeey there is a music file already', videoId, dl);
+    sendSource(data, res, dl);
+    return;
+  } catch (e) {
+    console.log('looks like this music doesn\'t exists');
+  }
+
+
+  stillLoading[videoId] = true;
+
+  youtubeDL.exec('http://www.youtube.com/watch?v=' + videoId,
+    ['-x', '--audio-format', 'mp3', '-o', ytdlFolderPattern, '--postprocessor-args', "-threads 4", '--add-metadata'],
+    { cwd: __dirname }, function (err, data) {
+
+      delete stillLoading[videoId];
+
+      if (err) {
+        errorOnLoading[videoId] = err.stack;
+
+        return res.json({
+          error: true,
+          info: err.stack
         });
-        const readStream = fs.createReadStream(file_path);
-        readStream.pipe(res);
-    } catch (error) {
-        res.status(400).send({ error: 'File not found on server', message: error.message });
-        console.log(error)
-        return;
+      }
+
+
+      delete errorOnLoading[videoId];
+
+      finished(videoId, res, dl);
+    });
+
+  console.log('i got the data', req.path, videoId, dl);
+}
+
+
+
+app.get('/archive', (req, res) => {
+  fsReaddir(musicFolder, (err, files) => {
+    if (err) {
+      return res.json({
+        error: true,
+        info: err.stack
+      });
     }
+
+    res.json(files);
+  })
 });
 
-module.exports = router;
+app.get(/^\/([A-Za-z0-9\-_]{5,20})\/dl$/, downloadMusic);
+app.get(/^\/([A-Za-z0-9\-_]{5,20})$/, downloadMusic);
+
+
+app.all('*', (req, res) => {
+  res.json({
+    invalid: true
+  });
+})
+
+app.listen(6060);
+
+console.log('application started at 6060');
