@@ -10,7 +10,7 @@ const jsConverter = require('../util/jsConverter');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+app.get('/', async (req, res) => {
     res.send({ ok: "ok" });
 });
 
