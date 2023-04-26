@@ -1,76 +1,67 @@
-/* eslint-disable no-console */
-const express = require("express");
-const helmet = require("helmet");
-const http = require("http");
-const url = require("url");
-const ytdl = require("ytdl-core");
-
+const express = require('express');
 const app = express();
-const port = process.env.PORT || 4522;
+const cache = require('./cache.js');
+const yts = require('yt-search');
+const ytdl = require('ytdl-core');
+const helmet = require('helmet');
+const path = require('path');
 
 app.use(helmet());
+app.set('view engine', 'ejs');
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use((err, req, res, next) => {
-	console.error(err.stack);
-	res.status(418).send("oh no error");
-});
+app.get('/', (req,res) => {
+  var query = "";
+  if(req.query.q) query = req.query.q;
+  res.render('home', { url: `/audio/${(`${query}`).split(" ").join("+")}` });
+}) 
 
-app.get("/api/img", (req, res, next) => {
-	const imgURL = url.parse(req.query.url);
-	http
-		.request(
-			{
-				// head because we only care about whether it exists or not
-				method: "HEAD",
-				hostname: imgURL.hostname,
-				path: imgURL.pathname,
-				port: imgURL.port
-			},
-			(response) => {
-				res.json({ status: response.statusCode });
-			}
-		)
-		.on("error", (err) => {
-			next(err);
-		})
-		.end();
-});
+app.get('/info/:id', async (req,res) => {
+  try {
+    var query = req.params.id;
+    if(!query)return res.send({
+      title: 'Youtube Audio Player'
+    });
+    if(cache.get(`${query}`))return res.send(cache.get(`${query}`));
+    var result = await yts(`${query} lyrics`);
+    if(!result?.videos)return res.send({
+      title: 'Not Found'
+    });
+    var video = result?.videos[0];
+    if(!video || !video.url)return res.send({
+      title: 'Not Found'
+    });
+    cache.set(`${query}`, video);
+    res.send(video);
+  }catch(e) {
+    return res.send({
+      title: 'Something Went Wrong'
+    });
+  }
+})
 
-app.get("/api/get", async (req, res, next) => {
-	let data;
-	let filterURL;
+app.get('/audio/:id', async (req,res) => {
+  try {
+    var query = req.params.id;
+    if(!query)return res.send(400).send({
+      message: 'Please provide a query'
+    });
+    if(cache.get(`${query}`))return ytdl(cache.get(`${query}`)?.url).pipe(res);
+    var result = await yts(`${query} lyrics`);
+    if(!result?.videos)return res.send(404).send({
+      message: '404 Not Found'
+    });
+    var video = result?.videos[0];
+    if(!video || !video.url)return res.send(404).send({
+      message: '404 Not Found'
+    });
+   cache.set(`${query}`, video);
+   ytdl(video.url).pipe(res);
+      }catch(e) {
+    return res.status(404).send({
+      message: 'Something Went Wrong'
+    })
+  }
+})
 
-	try {
-		data = await ytdl.getInfo(
-			"https://www.youtube.com/watch?v=" + req.query.url
-		);
-	} catch (err) {
-		next(err);
-		return;
-	}
-
-	try {
-		filterURL = ytdl.chooseFormat(data.formats, {
-			filter: "audioonly",
-			quality: "highest"
-		}).url;
-	} catch (err) {
-		next(err);
-		return;
-	}
-
-	res.json({
-		data: data,
-		directURL: filterURL
-	});
-});
-
-app.get("/*", (req, res) => {
-	res.status(403).send("absolutely not");
-});
-
-app.post("/*", (req, res) => {
-	res.status(403).send("absolutely not");
-});
-
-app.listen(port, "localhost", () => console.log(`listening on port ${port}`));
+app.listen(3000)  
