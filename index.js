@@ -1,32 +1,76 @@
-var http = require('http');
-var fs = require('fs');
-var express = require("express");
-var app = express();
-app.use(express.static('video/'));
+/* eslint-disable no-console */
+const express = require("express");
+const helmet = require("helmet");
+const http = require("http");
+const url = require("url");
+const ytdl = require("ytdl-core");
 
-list_video=[];
-var fn= fs.readdir('video/', function (err, files) {
-    if (err) {
-        return console.log('Unable to scan directory: ' + err);
-    }
-        files.forEach(function (file) {
-        list_video.push(file)
-    });
-   });
+const app = express();
+const port = process.env.PORT || 4522;
 
+app.use(helmet());
 
-app.get('/', function(req, res){
-  console.log('connected');  
-  var rand_num= Math.floor(Math.random()*Math.floor(list_video.length));
-  var random_select_file= list_video[rand_num];
-  var readerStream = fs.createReadStream("video/"+random_select_file);
-  readerStream.pipe(res);
-  console.log("playing: "+random_select_file);
-  
-  
-
+app.use((err, req, res, next) => {
+	console.error(err.stack);
+	res.status(418).send("oh no error");
 });
 
-app.listen(3000, (req,res) => {
-  console.log("listening on 3000");
+app.get("/api/img", (req, res, next) => {
+	const imgURL = url.parse(req.query.url);
+	http
+		.request(
+			{
+				// head because we only care about whether it exists or not
+				method: "HEAD",
+				hostname: imgURL.hostname,
+				path: imgURL.pathname,
+				port: imgURL.port
+			},
+			(response) => {
+				res.json({ status: response.statusCode });
+			}
+		)
+		.on("error", (err) => {
+			next(err);
+		})
+		.end();
 });
+
+app.get("/api/get", async (req, res, next) => {
+	let data;
+	let filterURL;
+
+	try {
+		data = await ytdl.getInfo(
+			"https://www.youtube.com/watch?v=" + req.query.url
+		);
+	} catch (err) {
+		next(err);
+		return;
+	}
+
+	try {
+		filterURL = ytdl.chooseFormat(data.formats, {
+			filter: "audioonly",
+			quality: "highest"
+		}).url;
+	} catch (err) {
+		next(err);
+		return;
+	}
+
+	res.json({
+		data: data,
+		directURL: filterURL
+	});
+});
+
+app.get("/*", (req, res) => {
+	res.status(403).send("absolutely not");
+});
+
+app.post("/*", (req, res) => {
+	res.status(403).send("absolutely not");
+});
+
+app.listen(port, "localhost", () => console.log(`listening on port ${port}`));
